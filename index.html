@@ -34,7 +34,7 @@
       </div>
       <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
         <button id="openGoalModalBtn" type="button" class="text-xs text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 px-3 py-1.5 rounded-lg transition font-medium">
-          ⚙️ 目標設定
+          ⚙️ 目標設定・復元
         </button>
         <button id="exportBtn" type="button" class="text-xs text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition">
           JSONエクスポート
@@ -204,12 +204,13 @@
 
   </main>
 
-  <!-- 目標設定モーダル -->
+  <!-- 目標設定・データ復元モーダル -->
   <div id="goalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
-      <h3 class="text-base font-bold text-slate-900">目標設定の変更</h3>
-      <p class="text-xs text-slate-500">目標体重と目標期日を設定すると、グラフの目標ペースラインや残り日数の計算に反映されます。</p>
-      <form id="goalForm" class="space-y-3">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto">
+      <h3 class="text-base font-bold text-slate-900">目標設定 & データ復元</h3>
+      <p class="text-xs text-slate-500">目標の設定や、テキスト貼り付けによるデータ一括復元が行えます。</p>
+      
+      <form id="goalForm" class="space-y-3 border-b border-slate-100 pb-4">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">目標体重 (kg)</label>
           <input type="number" id="modalGoalWeight" step="0.1" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -218,15 +219,26 @@
           <label class="block text-xs font-medium text-slate-600 mb-1">目標期日</label>
           <input type="date" id="modalGoalDate" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-        <div class="mt-5 flex justify-end gap-2 pt-2">
-          <button type="button" id="closeGoalModalBtn" class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
-            キャンセル
-          </button>
-          <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">
-            保存する
-          </button>
-        </div>
+        <button type="submit" class="w-full px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">
+          目標を保存する
+        </button>
       </form>
+
+      <!-- テキスト貼り付け復元エリア -->
+      <div class="space-y-2">
+        <label class="block text-xs font-bold text-slate-700">過去データのテキスト貼り付け復元</label>
+        <p class="text-[11px] text-slate-500">バックアップ用JSONのテキストをここに貼り付けてボタンを押すと、スマホからでも一発でデータを復元できます。</p>
+        <textarea id="importTextarea" rows="4" placeholder="[ { ... } ]" class="w-full rounded-xl border border-slate-300 p-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        <button type="button" id="pasteImportBtn" class="w-full px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">
+          テキストからデータを復元する
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button type="button" id="closeGoalModalBtn" class="w-full px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+          閉じる
+        </button>
+      </div>
     </div>
   </div>
 
@@ -234,7 +246,6 @@
     const STORAGE_KEY = 'sota_weight_records_2026_v3';
     const GOAL_STORAGE_KEY = 'sota_weight_goal_2026';
 
-    // デフォルト目標
     let goalConfig = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY)) || {
       weight: 63.0,
       date: '2026-12-30'
@@ -291,7 +302,6 @@
       return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
     }
 
-    // KPIカード更新
     function updateKPIs() {
       document.getElementById('kpiGoalWeightDisplay').textContent = goalConfig.weight.toFixed(1);
       document.getElementById('kpiGoalDateLabel').textContent = formatDateShort(goalConfig.date);
@@ -337,7 +347,6 @@
       document.getElementById('kpiRecentRate').textContent = `${monthlyRate > 0 ? '+' : ''}${monthlyRate}`;
     }
 
-    // 体重推移チャート描画
     function renderWeightChart() {
       const ctx = document.getElementById('weightChart').getContext('2d');
       if (weightChartInstance) {
@@ -411,10 +420,7 @@
           responsive: true,
           maintainAspectRatio: false,
           devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
-          interaction: {
-            mode: 'nearest',
-            intersect: false
-          },
+          interaction: { mode: 'nearest', intersect: false },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -466,10 +472,7 @@
           scales: {
             x: {
               type: 'time',
-              time: {
-                unit: 'month',
-                displayFormats: { month: 'yyyy/MM' }
-              },
+              time: { unit: 'month', displayFormats: { month: 'yyyy/MM' } },
               min: '2026-02-01',
               max: '2027-01-05',
               grid: { color: '#f1f5f9' },
@@ -491,7 +494,6 @@
       });
     }
 
-    // 月あたり減少率チャート描画
     function renderRateChart() {
       const ctx = document.getElementById('rateChart').getContext('2d');
       if (rateChartInstance) {
@@ -544,7 +546,6 @@
       });
     }
 
-    // 履歴テーブル描画
     function renderTable() {
       const tbody = document.getElementById('historyTableBody');
       tbody.innerHTML = '';
@@ -552,7 +553,7 @@
       document.getElementById('recordCountBadge').textContent = `全 ${records.length} 件`;
 
       if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">記録データがありません。上のフォームから追加するか、JSONインポートしてください。</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">記録データがありません。上のフォームから追加するか、「⚙️ 目標設定・復元」からテキストをインポートしてください。</td></tr>`;
         return;
       }
 
@@ -640,7 +641,6 @@
       renderTable();
     }
 
-    // イベント初期化
     document.addEventListener('DOMContentLoaded', () => {
       const today = new Date();
       const yyyy = today.getFullYear();
@@ -651,7 +651,6 @@
       loadRecords();
       refreshAll();
 
-      // 目標設定モーダル制御
       const goalModal = document.getElementById('goalModal');
       document.getElementById('openGoalModalBtn').addEventListener('click', () => {
         document.getElementById('modalGoalWeight').value = goalConfig.weight;
@@ -677,7 +676,37 @@
         }
       });
 
-      // タブ切り替え
+      // テキスト貼り付けからのインポート実行
+      document.getElementById('pasteImportBtn').addEventListener('click', () => {
+        const rawText = document.getElementById('importTextarea').value.trim();
+        if (!rawText) {
+          alert('テキストが入力されていません。');
+          return;
+        }
+        try {
+          const imported = JSON.parse(rawText);
+          if (Array.isArray(imported)) {
+            records = imported;
+          } else if (imported && Array.isArray(imported.records)) {
+            records = imported.records;
+            if (imported.goal) {
+              goalConfig = imported.goal;
+              saveGoalConfig();
+            }
+          } else {
+            alert('無効なデータ形式です。');
+            return;
+          }
+          saveRecords();
+          refreshAll();
+          goalModal.classList.add('hidden');
+          goalModal.classList.remove('flex');
+          alert('データを正常に復元しました！');
+        } catch (err) {
+          alert('JSONの解析に失敗しました。形式を確認してください。');
+        }
+      });
+
       const tabWeightBtn = document.getElementById('tabWeightBtn');
       const tabRateBtn = document.getElementById('tabRateBtn');
       const weightChartWrapper = document.getElementById('weightChartWrapper');
@@ -707,7 +736,6 @@
         renderRateChart();
       });
 
-      // 新規記録追加
       document.getElementById('addRecordForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const dateVal = document.getElementById('inputDate').value;
@@ -745,7 +773,6 @@
         setTimeout(() => toast.classList.add('opacity-0'), 2500);
       });
 
-      // JSONエクスポート
       document.getElementById('exportBtn').addEventListener('click', () => {
         const exportObj = {
           goal: goalConfig,
@@ -760,7 +787,6 @@
         downloadAnchor.remove();
       });
 
-      // JSONインポート
       document.getElementById('importFile').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -769,10 +795,8 @@
           try {
             const imported = JSON.parse(event.target.result);
             if (Array.isArray(imported)) {
-              // 従来の古い形式（配列のみ）の互換対応
               records = imported;
             } else if (imported && Array.isArray(imported.records)) {
-              // 新形式（目標設定＋記録）
               records = imported.records;
               if (imported.goal) {
                 goalConfig = imported.goal;
