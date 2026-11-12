@@ -22,28 +22,14 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
 
-  <!-- ヘッダー -->
+  <!-- ヘッダー（すっきりシンプル） -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">体重・体組成 推移ダッシュボード</h1>
-        </div>
-        <p id="headerGoalSub" class="text-xs text-slate-500 mt-0.5">プライベート管理・端末ローカル保存</p>
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900">体重・体組成 推移ダッシュボード</h1>
       </div>
-      <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-        <button id="openGoalModalBtn" type="button" class="text-xs text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 px-3 py-1.5 rounded-lg transition font-medium">
-          ⚙️ 目標設定・復元
-        </button>
-        <button id="exportBtn" type="button" class="text-xs text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition">
-          JSONエクスポート
-        </button>
-        <label class="text-xs text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition cursor-pointer">
-          JSONインポート
-          <input type="file" id="importFile" accept=".json" class="hidden" />
-        </label>
-      </div>
+      <p id="headerGoalSub" class="text-xs text-slate-500 mt-0.5">プライベート管理・端末ローカル保存</p>
     </div>
   </header>
 
@@ -199,6 +185,24 @@
             <!-- JSで動的描画 -->
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- データ管理・設定セクション（ページ下部に移動） -->
+    <section class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 space-y-3">
+      <h2 class="text-base font-bold text-slate-900">データ管理・目標設定</h2>
+      <p class="text-xs text-slate-500">目標の変更や、機種変更時のバックアップ（JSONのエクスポート・インポート）が行えます。</p>
+      <div class="flex flex-wrap gap-2 pt-1">
+        <button id="openGoalModalBtn" type="button" class="text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl transition">
+          ⚙️ 目標設定・データ復元
+        </button>
+        <button id="exportBtn" type="button" class="text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl transition">
+          📥 JSONエクスポート
+        </button>
+        <label class="text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl transition cursor-pointer inline-flex items-center">
+          📤 JSONインポート
+          <input type="file" id="importFile" accept=".json" class="hidden" />
+        </label>
       </div>
     </section>
 
@@ -553,7 +557,7 @@
       document.getElementById('recordCountBadge').textContent = `全 ${records.length} 件`;
 
       if (records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">記録データがありません。上のフォームから追加するか、「⚙️ 目標設定・復元」からテキストをインポートしてください。</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">記録データがありません。上のフォームから追加するか、ページ下部の「⚙️ 目標設定・復元」からテキストをインポートしてください。</td></tr>`;
         return;
       }
 
