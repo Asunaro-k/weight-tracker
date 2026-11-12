@@ -1,256 +1,736 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Weight Tracker</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>体重・体組成 推移ダッシュボード</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js & Annotation Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+  <!-- Google Fonts: Noto Sans JP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen pb-12">
 
-    <!-- Header -->
-    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-lg font-bold tracking-wider">Weight Tracker</h1>
-            <button onclick="openSettings()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
-                データ管理 / バックアップ
-            </button>
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-20">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">体重・体組成 推移ダッシュボード</h1>
         </div>
-    </header>
-
-    <main class="max-w-md mx-auto px-4 pt-4 space-y-4">
-        
-        <!-- Quick Input Card -->
-        <section class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
-            <h2 class="text-sm font-semibold text-slate-500 mb-3">本日の記録を追加</h2>
-            <form id="recordForm" onsubmit="addRecord(event)" class="space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-600 mb-1">日付</label>
-                        <input type="date" id="inputDate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-600 mb-1">体重 (kg)</label>
-                        <input type="number" step="0.1" id="inputWeight" placeholder="68.0" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">体脂肪率 (%) <span class="text-slate-400 font-normal">任意</span></label>
-                    <input type="number" step="0.1" id="inputFat" placeholder="19.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm transition active:scale-[0.99]">
-                    記録を保存する
-                </button>
-            </form>
-        </section>
-
-        <!-- Chart Section -->
-        <section class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-sm font-semibold text-slate-500">体重推移グラフ</h2>
-                <span id="latestWeightDisplay" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md"></span>
-            </div>
-            <div class="relative h-64 w-full">
-                <canvas id="weightChart"></canvas>
-            </div>
-        </section>
-
-        <!-- History List -->
-        <section class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
-            <h2 class="text-sm font-semibold text-slate-500 mb-3">直近の記録履歴</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="border-b border-slate-100 text-xs text-slate-400">
-                            <th class="pb-2 font-medium">日付</th>
-                            <th class="pb-2 font-medium">体重</th>
-                            <th class="pb-2 font-medium">体脂肪</th>
-                            <th class="pb-2 font-medium text-right">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody" class="divide-y divide-slate-50">
-                        <!-- JavaScriptで動的挿入 -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
-
-    <!-- Data Management Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-xl">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-slate-800">データ管理・バックアップ</h3>
-                <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600 text-sm font-bold px-2 py-1">✕</button>
-            </div>
-            <p class="text-xs text-slate-500">データはこのブラウザ（localStorage）にのみ安全に保存されます。</p>
-            
-            <div class="space-y-2">
-                <button onclick="exportData()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-xl text-xs transition">
-                    データをJSONファイルとしてエクスポート
-                </button>
-                <label class="block w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-xl text-xs text-center cursor-pointer transition">
-                    JSONファイルからインポート
-                    <input type="file" accept=".json" onchange="importData(event)" class="hidden">
-                </label>
-            </div>
-
-            <button onclick="closeSettings()" class="w-full bg-slate-900 text-white font-medium py-2.5 rounded-xl text-xs mt-2">
-                閉じる
-            </button>
-        </div>
+        <p class="text-xs text-slate-500 mt-0.5">プライベート管理・端末ローカル保存</p>
+      </div>
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <button id="exportBtn" type="button" class="text-xs text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition">
+          JSONエクスポート
+        </button>
+        <label class="text-xs text-slate-600 hover:text-blue-700 bg-slate-100 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition cursor-pointer">
+          JSONインポート
+          <input type="file" id="importFile" accept=".json" class="hidden" />
+        </label>
+      </div>
     </div>
+  </header>
 
-    <script>
-        const STORAGE_KEY = 'my_weight_tracker_data';
-        let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        document.getElementById('inputDate').valueAsDate = new Date();
-        let weightChart = null;
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
 
-        function saveAndRefresh() {
-            records.sort((a, b) => new Date(a.date) - new Date(b.date));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-            updateUI();
+    <!-- KPI サマリーカード -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- スタート体重 -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500">スタート体重</p>
+        <div class="mt-1.5 flex items-baseline gap-1">
+          <span id="kpiStartWeight" class="text-2xl sm:text-3xl font-bold text-slate-800">--</span>
+          <span class="text-sm font-medium text-slate-500">kg</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">最初の記録</p>
+      </div>
+
+      <!-- 現在体重 -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-blue-100 ring-1 ring-blue-500/10">
+        <p class="text-xs font-medium text-blue-600">最新体重 (<span id="kpiLatestDate">--/--</span>)</p>
+        <div class="mt-1.5 flex items-baseline gap-1">
+          <span id="kpiCurrentWeight" class="text-2xl sm:text-3xl font-black text-slate-900">--</span>
+          <span class="text-sm font-medium text-slate-500">kg</span>
+        </div>
+        <p class="text-xs font-bold text-emerald-600 mt-1" id="kpiTotalDiff">トータル -- kg</p>
+      </div>
+
+      <!-- 年末目標まで -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-100">
+        <p class="text-xs font-medium text-emerald-700">年末目標 (12/30)</p>
+        <div class="mt-1.5 flex items-baseline gap-1">
+          <span class="text-2xl sm:text-3xl font-bold text-slate-800">63.0</span>
+          <span class="text-sm font-medium text-slate-500">kg</span>
+        </div>
+        <p class="text-xs font-bold text-amber-600 mt-1" id="kpiRemainingDiff">目標まであと -- kg</p>
+      </div>
+
+      <!-- 直近減量ペース -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-100">
+        <p class="text-xs font-medium text-slate-500">直近の減量ペース</p>
+        <div class="mt-1.5 flex items-baseline gap-1">
+          <span id="kpiRecentRate" class="text-2xl sm:text-3xl font-bold text-blue-600">--</span>
+          <span class="text-sm font-medium text-slate-500">%/月</span>
+        </div>
+        <p class="text-xs text-emerald-600 font-medium mt-1">理想ゾーン (2〜4%/月)</p>
+      </div>
+    </section>
+
+    <!-- メイングラフエリア -->
+    <section class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h2 id="chartTitle" class="text-base sm:text-lg font-bold text-slate-900">体重推移グラフ</h2>
+          <p id="chartSubtitle" class="text-xs text-slate-500 mt-0.5">あなたの記録データに基づいた推移グラフ</p>
+        </div>
+        <!-- グラフ切り替えタブ -->
+        <div class="inline-flex bg-slate-100 p-1 rounded-xl self-start">
+          <button id="tabWeightBtn" type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition">
+            体重推移 (kg)
+          </button>
+          <button id="tabRateBtn" type="button" class="px-3.5 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition">
+            月あたり減少率 (%/月)
+          </button>
+        </div>
+      </div>
+
+      <!-- 体重推移チャートコンテナ -->
+      <div id="weightChartWrapper" class="relative w-full h-[340px] sm:h-[420px]">
+        <canvas id="weightChart"></canvas>
+      </div>
+
+      <!-- 月あたり減少率チャートコンテナ -->
+      <div id="rateChartWrapper" class="relative w-full h-[340px] sm:h-[420px] hidden">
+        <canvas id="rateChart"></canvas>
+      </div>
+
+      <!-- 凡例・補足バッジ -->
+      <div id="weightLegendNote" class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+            初期記録・ちょこザップ期
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>
+            体組成計記録
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-3 h-0.5 border-t-2 border-dashed border-emerald-500 inline-block"></span>
+            12/30 目標ペース (63.0kg)
+          </span>
+        </div>
+        <span class="text-slate-400">※点にカーソルを合わせるかタップすると詳細を表示</span>
+      </div>
+    </section>
+
+    <!-- 新しい記録を追加フォーム -->
+    <section class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-bold text-slate-900">新しい測定記録を追加</h2>
+        <span id="saveToast" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full opacity-0 transition-opacity duration-300">
+          グラフと表に反映しました！
+        </span>
+      </div>
+      <form id="addRecordForm" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div>
+          <label for="inputDate" class="block text-xs font-medium text-slate-600 mb-1">測定日</label>
+          <input type="date" id="inputDate" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div>
+          <label for="inputWeight" class="block text-xs font-medium text-slate-600 mb-1">体重 (kg)</label>
+          <input type="number" id="inputWeight" step="0.1" min="40" max="150" placeholder="例: 67.6" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div>
+          <label for="inputBodyFat" class="block text-xs font-medium text-slate-600 mb-1">体脂肪率 % (任意)</label>
+          <input type="number" id="inputBodyFat" step="0.1" min="3" max="60" placeholder="例: 19.2" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div>
+          <label for="inputNote" class="block text-xs font-medium text-slate-600 mb-1">測定機器・メモ</label>
+          <input type="text" id="inputNote" value="オムロン Karada Scan 203" placeholder="機器やメモ" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        </div>
+        <div class="flex items-end">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm py-2.5 px-4 rounded-xl shadow-sm transition cursor-pointer">
+            ＋ 記録を追加
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 全記録データ一覧テーブル -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div class="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">全測定データ履歴</h2>
+          <p class="text-xs text-slate-500 mt-0.5">お使いの端末（ブラウザ）に安全に保存されています</p>
+        </div>
+        <span id="recordCountBadge" class="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">全 0 件</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+              <th class="py-3 px-4 font-semibold">測定日</th>
+              <th class="py-3 px-4 font-semibold text-right">体重</th>
+              <th class="py-3 px-4 font-semibold text-right">前回比</th>
+              <th class="py-3 px-4 font-semibold text-right">スタート比</th>
+              <th class="py-3 px-4 font-semibold text-right">体脂肪率</th>
+              <th class="py-3 px-4 font-semibold">測定機器・メモ</th>
+              <th class="py-3 px-3 font-semibold text-center">操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-100 text-sm">
+            <!-- JSで動적描画 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'sota_weight_records_2026_v2';
+    const GOAL_DATE = '2026-12-30';
+    const GOAL_WEIGHT = 63.0;
+    const APP_GOAL_WEIGHT = 65.0;
+
+    let records = [];
+    let weightChartInstance = null;
+    let rateChartInstance = null;
+
+    // データの読み込み（完全に空の初期状態、またはローカルストレージから復元）
+    function loadRecords() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            records = parsed;
+            sortRecords();
+            return;
+          }
         }
+      } catch (e) {
+        console.error('Storage read error:', e);
+      }
+      records = [];
+    }
 
-        function addRecord(event) {
-            event.preventDefault();
-            const date = document.getElementById('inputDate').value;
-            const weight = parseFloat(document.getElementById('inputWeight').value);
-            const fatInput = document.getElementById('inputFat').value;
-            const fat = fatInput ? parseFloat(fatInput) : null;
+    // データの保存
+    function saveRecords() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      } catch (e) {
+        console.error('Storage write error:', e);
+      }
+    }
 
-            const existingIndex = records.findIndex(r => r.date === date);
-            if (existingIndex >= 0) {
-                records[existingIndex] = { date, weight, fat };
-            } else {
-                records.push({ date, weight, fat });
+    // 日付順にソート
+    function sortRecords() {
+      records.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    // 日付フォーマット (YYYY/MM/DD)
+    function formatDateSlash(dateStr) {
+      return dateStr.replace(/-/g, '/');
+    }
+
+    // 短縮日付フォーマット (M/D)
+    function formatDateShort(dateStr) {
+      if (!dateStr) return '--/--';
+      const parts = dateStr.split('-');
+      return `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
+    }
+
+    // KPIカード更新
+    function updateKPIs() {
+      if (records.length === 0) {
+        document.getElementById('kpiStartWeight').textContent = '--';
+        document.getElementById('kpiLatestDate').textContent = '--/--';
+        document.getElementById('kpiCurrentWeight').textContent = '--';
+        document.getElementById('kpiTotalDiff').textContent = 'トータル -- kg';
+        document.getElementById('kpiRemainingDiff').textContent = '目標まであと -- kg';
+        document.getElementById('kpiRecentRate').textContent = '--';
+        return;
+      }
+
+      const first = records[0];
+      const latest = records[records.length - 1];
+
+      const totalDiff = (latest.weight - first.weight).toFixed(1);
+      const remaining = (GOAL_WEIGHT - latest.weight).toFixed(1);
+
+      document.getElementById('kpiStartWeight').textContent = first.weight.toFixed(1);
+      document.getElementById('kpiLatestDate').textContent = formatDateShort(latest.date);
+      document.getElementById('kpiCurrentWeight').textContent = latest.weight.toFixed(1);
+
+      const diffSign = totalDiff > 0 ? '+' : '';
+      document.getElementById('kpiTotalDiff').textContent = `トータル ${diffSign}${totalDiff} kg`;
+
+      const remEl = document.getElementById('kpiRemainingDiff');
+      if (latest.weight <= GOAL_WEIGHT) {
+        remEl.textContent = '🎉 目標達成！';
+        remEl.className = 'text-xs font-bold text-emerald-600 mt-1';
+      } else {
+        remEl.textContent = `目標まであと ${remaining} kg`;
+        remEl.className = 'text-xs font-bold text-amber-600 mt-1';
+      }
+
+      const baseRec = records.length >= 2 ? records[records.length - 2] : first;
+      const daysDiff = Math.max(1, (new Date(latest.date) - new Date(baseRec.date)) / (1000 * 60 * 60 * 24));
+      const monthsDiff = daysDiff / 30.4375;
+      const pctChange = ((latest.weight - baseRec.weight) / baseRec.weight) * 100;
+      const monthlyRate = (pctChange / monthsDiff).toFixed(2);
+      document.getElementById('kpiRecentRate').textContent = `${monthlyRate > 0 ? '+' : ''}${monthlyRate}`;
+    }
+
+    // 体重推移チャート描画
+    function renderWeightChart() {
+      const ctx = document.getElementById('weightChart').getContext('2d');
+      if (weightChartInstance) {
+        weightChartInstance.destroy();
+      }
+
+      const chocozapData = records
+        .filter(r => r.source === 'chocozap')
+        .map(r => ({ x: r.date, y: r.weight, note: r.note, bodyFat: r.bodyFat }));
+
+      const lastChoco = chocozapData.length > 0 ? chocozapData[chocozapData.length - 1] : null;
+      const scaleRecords = records
+        .filter(r => r.source !== 'chocozap')
+        .map(r => ({ x: r.date, y: r.weight, note: r.note, bodyFat: r.bodyFat }));
+
+      const scaleData = lastChoco ? [lastChoco, ...scaleRecords] : scaleRecords;
+
+      const latest = records.length > 0 ? records[records.length - 1] : null;
+      const goalProjectionData = latest
+        ? [
+            { x: latest.date, y: latest.weight, note: '現在地点' },
+            { x: GOAL_DATE, y: GOAL_WEIGHT, note: '12/30 年末目標' }
+          ]
+        : [];
+
+      const startWeight = records.length > 0 ? records[0].weight : 80.0;
+
+      weightChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [
+            {
+              label: '初期記録・ちょこザップ期',
+              data: chocozapData,
+              borderColor: '#f59e0b',
+              backgroundColor: '#ffffff',
+              borderWidth: 3,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBorderColor: '#f59e0b',
+              pointBorderWidth: 2.5,
+              tension: 0.1
+            },
+            {
+              label: '体組成計記録',
+              data: scaleData,
+              borderColor: '#2563eb',
+              backgroundColor: '#2563eb',
+              borderWidth: 3,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 1.5,
+              tension: 0.1
+            },
+            {
+              label: '12/30 目標ペース',
+              data: goalProjectionData,
+              borderColor: '#10b981',
+              backgroundColor: '#10b981',
+              borderWidth: 2.5,
+              borderDash: [6, 6],
+              pointRadius: [0, 7],
+              pointStyle: ['circle', 'star'],
+              pointHoverRadius: 8,
+              tension: 0
             }
-
-            saveAndRefresh();
-            document.getElementById('inputWeight').value = '';
-            document.getElementById('inputFat').value = '';
-        }
-
-        function deleteRecord(date) {
-            if (confirm(`${date} の記録を削除しますか？`)) {
-                records = records.filter(r => r.date !== date);
-                saveAndRefresh();
-            }
-        }
-
-        function updateUI() {
-            const tbody = document.getElementById('historyTableBody');
-            tbody.innerHTML = '';
-
-            const sortedDesc = [...records].reverse();
-            sortedDesc.forEach(r => {
-                const tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-50 hover:bg-slate-50/50';
-                tr.innerHTML = `
-                    <td class="py-2.5 text-slate-600">${r.date}</td>
-                    <td class="py-2.5 font-bold text-slate-800">${r.weight} <span class="text-xs font-normal text-slate-500">kg</span></td>
-                    <td class="py-2.5 text-slate-600">${r.fat !== null ? r.fat + ' %' : '—'}</td>
-                    <td class="py-2.5 text-right">
-                        <button onclick="deleteRecord('${r.date}')" class="text-xs text-rose-500 hover:text-rose-700 px-2 py-1">削除</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            if (records.length > 0) {
-                const latest = records[records.length - 1];
-                document.getElementById('latestWeightDisplay').innerText = `現在: ${latest.weight} kg (${latest.date})`;
-            } else {
-                document.getElementById('latestWeightDisplay').innerText = 'データがありません';
-            }
-
-            renderChart();
-        }
-
-        function renderChart() {
-            const ctx = document.getElementById('weightChart').getContext('2d');
-            const labels = records.map(r => r.date);
-            const dataWeights = records.map(r => r.weight);
-
-            if (weightChart) {
-                weightChart.destroy();
-            }
-
-            weightChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: '体重 (kg)',
-                        data: dataWeights,
-                        borderColor: '#059669',
-                        backgroundColor: 'rgba(5, 150, 105, 0.05)',
-                        borderWidth: 2.5,
-                        pointBackgroundColor: '#059669',
-                        pointRadius: 4,
-                        fill: true,
-                        tension: 0.1
-                    }]
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+          interaction: {
+            mode: 'nearest',
+            intersect: false
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              titleFont: { family: "'Noto Sans JP', sans-serif", size: 12, weight: 'bold' },
+              bodyFont: { family: "'Noto Sans JP', sans-serif", size: 12 },
+              padding: 12,
+              cornerRadius: 10,
+              callbacks: {
+                title: (items) => (items.length ? formatDateSlash(items[0].raw.x) : ''),
+                label: (ctx) => {
+                  const raw = ctx.raw;
+                  const diff = (raw.y - startWeight).toFixed(1);
+                  const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+                  const lines = [`体重: ${raw.y.toFixed(1)} kg (開始比 ${diffStr} kg)`];
+                  if (raw.bodyFat !== null && raw.bodyFat !== undefined) {
+                    lines.push(`体脂肪率: ${raw.bodyFat.toFixed(1)} %`);
+                  }
+                  if (raw.note) {
+                    lines.push(`メモ: ${raw.note}`);
+                  }
+                  return lines;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                appGoalLine: {
+                  type: 'line',
+                  yMin: APP_GOAL_WEIGHT,
+                  yMax: APP_GOAL_WEIGHT,
+                  borderColor: 'rgba(245, 158, 11, 0.65)',
+                  borderWidth: 1.5,
+                  borderDash: [5, 5],
+                  label: {
+                    display: true,
+                    content: 'アプリ設定目標: 65.0kg',
+                    position: 'start',
+                    backgroundColor: 'rgba(255, 251, 235, 0.9)',
+                    color: '#b45309',
+                    font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' },
+                    padding: { x: 6, y: 3 },
+                    borderRadius: 4
+                  }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { grid: { color: '#f1f5f9' } },
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }
-                    }
+                finalGoalLine: {
+                  type: 'line',
+                  yMin: GOAL_WEIGHT,
+                  yMax: GOAL_WEIGHT,
+                  borderColor: 'rgba(16, 185, 129, 0.75)',
+                  borderWidth: 1.5,
+                  borderDash: [5, 5],
+                  label: {
+                    display: true,
+                    content: '12/30 最終目標: 63.0kg',
+                    position: 'start',
+                    backgroundColor: 'rgba(236, 253, 245, 0.9)',
+                    color: '#047857',
+                    font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' },
+                    padding: { x: 6, y: 3 },
+                    borderRadius: 4
+                  }
                 }
-            });
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: { month: 'yyyy/MM' }
+              },
+              min: '2026-02-01',
+              max: '2027-01-05',
+              grid: { color: '#f1f5f9' },
+              ticks: { font: { family: "'Noto Sans JP', sans-serif", size: 11 }, color: '#64748b' }
+            },
+            y: {
+              min: 60.0,
+              max: 85.0,
+              grid: { color: '#f1f5f9' },
+              ticks: {
+                stepSize: 5,
+                font: { family: "'Noto Sans JP', sans-serif", size: 11 },
+                color: '#64748b',
+                callback: (val) => `${val} kg`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 月あたり減少率チャート描画
+    function renderRateChart() {
+      const ctx = document.getElementById('rateChart').getContext('2d');
+      if (rateChartInstance) {
+        rateChartInstance.destroy();
+      }
+
+      const latest = records.length > 0 ? records[records.length - 1] : { weight: 68.0, date: '2026-11-11' };
+      const daysToGoal = Math.max(1, (new Date(GOAL_DATE) - new Date(latest.date)) / (1000 * 60 * 60 * 24));
+      const monthsToGoal = daysToGoal / 30.4375;
+      const goalPctLoss = ((latest.weight - GOAL_WEIGHT) / latest.weight) * 100;
+      const targetMonthlyRate = Math.max(0, Number((goalPctLoss / monthsToGoal).toFixed(2)));
+
+      rateChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['総合ペース', '年末目標ペース'],
+          datasets: [
+            {
+              label: '月あたりの体重減少率 (%/月)',
+              data: [3.44, targetMonthlyRate],
+              backgroundColor: ['#2563eb', '#10b981'],
+              borderRadius: 10,
+              barPercentage: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          devicePixelRatio: Math.max(window.devicePixelRatio || 1, 2),
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(15, 23, 42, 0.92)',
+              callbacks: {
+                label: (ctx) => `月あたり減少率: -${ctx.raw.toFixed(2)} % / 月`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              min: 0,
+              max: 5.5,
+              grid: { color: '#f1f5f9' },
+              ticks: { callback: (val) => `-${val}%` }
+            }
+          }
+        }
+      });
+    }
+
+    // 履歴テーブル描画
+    function renderTable() {
+      const tbody = document.getElementById('historyTableBody');
+      tbody.innerHTML = '';
+
+      document.getElementById('recordCountBadge').textContent = `全 ${records.length} 件`;
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400 text-sm">記録データがありません。上のフォームから追加するか、JSONインポートしてください。</td></tr>`;
+        return;
+      }
+
+      const startWeight = records[0].weight;
+      const reversed = [...records].reverse();
+
+      reversed.forEach((rec, revIdx) => {
+        const origIdx = records.length - 1 - revIdx;
+        const prevRec = origIdx > 0 ? records[origIdx - 1] : null;
+
+        const prevDiff = prevRec ? (rec.weight - prevRec.weight).toFixed(1) : null;
+        const startDiff = (rec.weight - startWeight).toFixed(1);
+
+        let prevDiffHtml = '<span class="text-slate-400">—</span>';
+        if (prevDiff !== null) {
+          const num = parseFloat(prevDiff);
+          if (num < 0) {
+            prevDiffHtml = `<span class="font-bold text-emerald-600">${prevDiff} kg</span>`;
+          } else if (num > 0) {
+            prevDiffHtml = `<span class="font-bold text-rose-500">+${prevDiff} kg</span>`;
+          } else {
+            prevDiffHtml = `<span class="text-slate-500">±0.0 kg</span>`;
+          }
         }
 
-        function openSettings() {
-            document.getElementById('settingsModal').classList.remove('hidden');
-        }
-        function closeSettings() {
-            document.getElementById('settingsModal').classList.add('hidden');
+        const startNum = parseFloat(startDiff);
+        const startDiffHtml =
+          origIdx === 0
+            ? '<span class="text-slate-400">スタート</span>'
+            : `<span class="font-bold ${startNum <= 0 ? 'text-blue-600' : 'text-rose-500'}">${startNum > 0 ? '+' : ''}${startDiff} kg</span>`;
+
+        const bodyFatHtml =
+          rec.bodyFat !== null && rec.bodyFat !== undefined
+            ? `<span class="font-medium text-slate-700">${rec.bodyFat.toFixed(1)} %</span>`
+            : '<span class="text-slate-300">—</span>';
+
+        const badgeColor =
+          rec.source === 'chocozap'
+            ? 'bg-amber-50 text-amber-700 border-amber-200'
+            : 'bg-blue-50 text-blue-700 border-blue-200';
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">${formatDateSlash(rec.date)}</td>
+          <td class="py-3 px-4 text-right font-bold text-slate-900 whitespace-nowrap">${rec.weight.toFixed(1)} kg</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">${prevDiffHtml}</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">${startDiffHtml}</td>
+          <td class="py-3 px-4 text-right whitespace-nowrap">${bodyFatHtml}</td>
+          <td class="py-3 px-4">
+            <span class="inline-block text-xs px-2 py-0.5 rounded-md border ${badgeColor}">
+              ${escapeHtml(rec.note || '記録')}
+            </span>
+          </td>
+          <td class="py-3 px-3 text-center">
+            <button type="button" data-id="${rec.id}" class="delete-rec-btn text-xs text-slate-400 hover:text-rose-600 px-2 py-1 rounded transition" title="削除">削除</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.delete-rec-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetId = e.currentTarget.getAttribute('data-id');
+          records = records.filter(r => r.id !== targetId);
+          saveRecords();
+          refreshAll();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function refreshAll() {
+      sortRecords();
+      updateKPIs();
+      renderWeightChart();
+      renderRateChart();
+      renderTable();
+    }
+
+    // イベント初期化
+    document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('inputDate').value = `${yyyy}-${mm}-${dd}`;
+
+      loadRecords();
+      refreshAll();
+
+      // タブ切り替え
+      const tabWeightBtn = document.getElementById('tabWeightBtn');
+      const tabRateBtn = document.getElementById('tabRateBtn');
+      const weightChartWrapper = document.getElementById('weightChartWrapper');
+      const rateChartWrapper = document.getElementById('rateChartWrapper');
+      const weightLegendNote = document.getElementById('weightLegendNote');
+      const chartTitle = document.getElementById('chartTitle');
+      const chartSubtitle = document.getElementById('chartSubtitle');
+
+      tabWeightBtn.addEventListener('click', () => {
+        tabWeightBtn.className = 'px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition';
+        tabRateBtn.className = 'px-3.5 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition';
+        weightChartWrapper.classList.remove('hidden');
+        rateChartWrapper.classList.add('hidden');
+        weightLegendNote.classList.remove('hidden');
+        chartTitle.textContent = '体重推移グラフ';
+        chartSubtitle.textContent = 'あなたの記録データに基づいた推移グラフ';
+      });
+
+      tabRateBtn.addEventListener('click', () => {
+        tabRateBtn.className = 'px-3.5 py-1.5 text-xs font-bold rounded-lg bg-white text-slate-900 shadow-sm transition';
+        tabWeightBtn.className = 'px-3.5 py-1.5 text-xs font-bold rounded-lg text-slate-600 hover:text-slate-900 transition';
+        rateChartWrapper.classList.remove('hidden');
+        weightChartWrapper.classList.add('hidden');
+        weightLegendNote.classList.add('hidden');
+        chartTitle.textContent = '月あたりの体重減少率（体重比 %/月）';
+        chartSubtitle.textContent = '減量効率の分析';
+        renderRateChart();
+      });
+
+      // 新規記録追加
+      document.getElementById('addRecordForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const dateVal = document.getElementById('inputDate').value;
+        const weightVal = parseFloat(document.getElementById('inputWeight').value);
+        const bodyFatRaw = document.getElementById('inputBodyFat').value;
+        const bodyFatVal = bodyFatRaw !== '' ? parseFloat(bodyFatRaw) : null;
+        const noteVal = document.getElementById('inputNote').value.trim() || 'オムロン Karada Scan 203';
+
+        if (!dateVal || isNaN(weightVal)) return;
+
+        const existingIndex = records.findIndex(r => r.date === dateVal);
+        if (existingIndex >= 0) {
+          records[existingIndex].weight = weightVal;
+          records[existingIndex].bodyFat = bodyFatVal;
+          records[existingIndex].note = noteVal;
+        } else {
+          records.push({
+            id: 'rec-' + Date.now(),
+            date: dateVal,
+            weight: weightVal,
+            bodyFat: bodyFatVal,
+            source: 'scale',
+            note: noteVal
+          });
         }
 
-        function exportData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `weight_data_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
+        saveRecords();
+        refreshAll();
 
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (Array.isArray(imported)) {
-                        records = imported;
-                        saveAndRefresh();
-                        closeSettings();
-                        alert('データを正常にインポートしました！');
-                    } else {
-                        alert('無効なファイル形式です。');
-                    }
-                } catch (err) {
-                    alert('JSONの読み込みに失敗しました。');
-                }
-            };
-            reader.readAsText(file);
-        }
+        document.getElementById('inputWeight').value = '';
+        document.getElementById('inputBodyFat').value = '';
 
-        updateUI();
-    </script>
+        const toast = document.getElementById('saveToast');
+        toast.classList.remove('opacity-0');
+        setTimeout(() => toast.classList.add('opacity-0'), 2500);
+      });
+
+      // JSONエクスポート
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `weight_data_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      });
+
+      // JSONインポート
+      document.getElementById('importFile').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          try {
+            const imported = JSON.parse(event.target.result);
+            if (Array.isArray(imported)) {
+              records = imported;
+              saveRecords();
+              refreshAll();
+              alert('データを正常にインポートしました！');
+            } else {
+              alert('無効なファイル形式です。');
+            }
+          } catch (err) {
+            alert('JSONの読み込みに失敗しました。');
+          }
+        };
+        reader.readAsText(file);
+      });
+    });
+  </script>
 </body>
 </html>
