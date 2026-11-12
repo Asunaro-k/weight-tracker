@@ -19,7 +19,7 @@
         <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-lg font-bold tracking-wider">Weight Tracker</h1>
             <button onclick="openSettings()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
-                データ管理 / インポート
+                データ管理 / バックアップ
             </button>
         </div>
     </header>
@@ -33,18 +33,18 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-medium text-slate-600 mb-1">日付</label>
-                        <input type="date" id="inputDate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" id="inputDate" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-600 mb-1">体重 (kg)</label>
-                        <input type="number" step="0.1" id="inputWeight" placeholder="68.0" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" step="0.1" id="inputWeight" placeholder="68.0" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                     </div>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-1">体脂肪率 (%) <span class="text-slate-400 font-normal">任意</span></label>
-                    <input type="number" step="0.1" id="inputFat" placeholder="19.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="number" step="0.1" id="inputFat" placeholder="19.5" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm transition active:scale-[0.99]">
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm shadow-sm transition active:scale-[0.99]">
                     記録を保存する
                 </button>
             </form>
@@ -54,7 +54,7 @@
         <section class="bg-white rounded-2xl shadow-sm p-4 border border-slate-100">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-sm font-semibold text-slate-500">体重推移グラフ</h2>
-                <span id="latestWeightDisplay" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md"></span>
+                <span id="latestWeightDisplay" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md"></span>
             </div>
             <div class="relative h-64 w-full">
                 <canvas id="weightChart"></canvas>
@@ -89,7 +89,7 @@
                 <h3 class="font-bold text-slate-800">データ管理・バックアップ</h3>
                 <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600 text-sm font-bold px-2 py-1">✕</button>
             </div>
-            <p class="text-xs text-slate-500">データはこのブラウザ（localStorage）にのみ保存されます。機種変更時などのためにバックアップ（JSON）を保存・復元できます。</p>
+            <p class="text-xs text-slate-500">データはこのブラウザ（localStorage）にのみ安全に保存されます。</p>
             
             <div class="space-y-2">
                 <button onclick="exportData()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 rounded-xl text-xs transition">
@@ -99,15 +99,6 @@
                     JSONファイルからインポート
                     <input type="file" accept=".json" onchange="importData(event)" class="hidden">
                 </label>
-            </div>
-
-            <hr class="border-slate-100">
-
-            <div>
-                <span class="block text-xs font-bold text-slate-700 mb-1">過去データを一括で流し込む（初期インポート）</span>
-                <button onclick="loadSampleData()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium py-2 rounded-xl text-xs transition border border-amber-200">
-                    これまでの推移データ（2/15〜）をセットする
-                </button>
             </div>
 
             <button onclick="closeSettings()" class="w-full bg-slate-900 text-white font-medium py-2.5 rounded-xl text-xs mt-2">
@@ -121,24 +112,6 @@
         let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
         document.getElementById('inputDate').valueAsDate = new Date();
         let weightChart = null;
-
-        function loadSampleData() {
-            if (confirm('これまでの記録データを読み込みますか？')) {
-                records = [
-                    { date: '2026-02-15', weight: 82.0, fat: null },
-                    { date: '2026-05-16', weight: 79.7, fat: null },
-                    { date: '2026-06-16', weight: 78.8, fat: null },
-                    { date: '2026-06-30', weight: 76.8, fat: 28.2 },
-                    { date: '2026-10-07', weight: 70.8, fat: 25.7 },
-                    { date: '2026-10-20', weight: 68.5, fat: 23.6 },
-                    { date: '2026-11-03', weight: 68.0, fat: 23.6 },
-                    { date: '2026-11-11', weight: 68.0, fat: 19.5 }
-                ];
-                saveAndRefresh();
-                closeSettings();
-                alert('過去データを読み込みました！');
-            }
-        }
 
         function saveAndRefresh() {
             records.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -217,10 +190,10 @@
                     datasets: [{
                         label: '体重 (kg)',
                         data: dataWeights,
-                        borderColor: '#2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.05)',
+                        borderColor: '#059669',
+                        backgroundColor: 'rgba(5, 150, 105, 0.05)',
                         borderWidth: 2.5,
-                        pointBackgroundColor: '#2563eb',
+                        pointBackgroundColor: '#059669',
                         pointRadius: 4,
                         fill: true,
                         tension: 0.1
