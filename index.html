@@ -30,9 +30,12 @@
           <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
           <h1 class="text-lg sm:text-xl font-bold tracking-tight text-slate-900">体重・体組成 推移ダッシュボード</h1>
         </div>
-        <p class="text-xs text-slate-500 mt-0.5">プライベート管理・端末ローカル保存</p>
+        <p id="headerGoalSub" class="text-xs text-slate-500 mt-0.5">プライベート管理・端末ローカル保存</p>
       </div>
-      <div class="flex items-center gap-2 self-start sm:self-auto">
+      <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        <button id="openGoalModalBtn" type="button" class="text-xs text-slate-600 hover:text-amber-700 bg-slate-100 hover:bg-amber-50 px-3 py-1.5 rounded-lg transition font-medium">
+          ⚙️ 目標設定
+        </button>
         <button id="exportBtn" type="button" class="text-xs text-slate-600 hover:text-emerald-700 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition">
           JSONエクスポート
         </button>
@@ -68,11 +71,11 @@
         <p class="text-xs font-bold text-emerald-600 mt-1" id="kpiTotalDiff">トータル -- kg</p>
       </div>
 
-      <!-- 年末目標まで -->
+      <!-- 目標まで -->
       <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-emerald-100">
-        <p class="text-xs font-medium text-emerald-700">年末目標 (12/30)</p>
+        <p class="text-xs font-medium text-emerald-700">目標 (<span id="kpiGoalDateLabel">12/30</span>)</p>
         <div class="mt-1.5 flex items-baseline gap-1">
-          <span class="text-2xl sm:text-3xl font-bold text-slate-800">63.0</span>
+          <span id="kpiGoalWeightDisplay" class="text-2xl sm:text-3xl font-bold text-slate-800">--</span>
           <span class="text-sm font-medium text-slate-500">kg</span>
         </div>
         <p class="text-xs font-bold text-amber-600 mt-1" id="kpiRemainingDiff">目標まであと -- kg</p>
@@ -130,7 +133,7 @@
           </span>
           <span class="inline-flex items-center gap-1.5">
             <span class="w-3 h-0.5 border-t-2 border-dashed border-emerald-500 inline-block"></span>
-            12/30 目標ペース (63.0kg)
+            目標ペースライン
           </span>
         </div>
         <span class="text-slate-400">※点にカーソルを合わせるかタップすると詳細を表示</span>
@@ -193,7 +196,7 @@
             </tr>
           </thead>
           <tbody id="historyTableBody" class="divide-y divide-slate-100 text-sm">
-            <!-- JSで動적描画 -->
+            <!-- JSで動的描画 -->
           </tbody>
         </table>
       </div>
@@ -201,17 +204,46 @@
 
   </main>
 
+  <!-- 目標設定モーダル -->
+  <div id="goalModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-slate-100 space-y-4">
+      <h3 class="text-base font-bold text-slate-900">目標設定の変更</h3>
+      <p class="text-xs text-slate-500">目標体重と目標期日を設定すると、グラフの目標ペースラインや残り日数の計算に反映されます。</p>
+      <form id="goalForm" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">目標体重 (kg)</label>
+          <input type="number" id="modalGoalWeight" step="0.1" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">目標期日</label>
+          <input type="date" id="modalGoalDate" required class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="mt-5 flex justify-end gap-2 pt-2">
+          <button type="button" id="closeGoalModalBtn" class="px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+            キャンセル
+          </button>
+          <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition">
+            保存する
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    const STORAGE_KEY = 'sota_weight_records_2026_v2';
-    const GOAL_DATE = '2026-12-30';
-    const GOAL_WEIGHT = 63.0;
-    const APP_GOAL_WEIGHT = 65.0;
+    const STORAGE_KEY = 'sota_weight_records_2026_v3';
+    const GOAL_STORAGE_KEY = 'sota_weight_goal_2026';
+
+    // デフォルト目標
+    let goalConfig = JSON.parse(localStorage.getItem(GOAL_STORAGE_KEY)) || {
+      weight: 63.0,
+      date: '2026-12-30'
+    };
 
     let records = [];
     let weightChartInstance = null;
     let rateChartInstance = null;
 
-    // データの読み込み（完全に空の初期状態、またはローカルストレージから復元）
     function loadRecords() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -229,7 +261,6 @@
       records = [];
     }
 
-    // データの保存
     function saveRecords() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
@@ -238,17 +269,22 @@
       }
     }
 
-    // 日付順にソート
+    function saveGoalConfig() {
+      try {
+        localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(goalConfig));
+      } catch (e) {
+        console.error('Goal save error:', e);
+      }
+    }
+
     function sortRecords() {
       records.sort((a, b) => new Date(a.date) - new Date(b.date));
     }
 
-    // 日付フォーマット (YYYY/MM/DD)
     function formatDateSlash(dateStr) {
       return dateStr.replace(/-/g, '/');
     }
 
-    // 短縮日付フォーマット (M/D)
     function formatDateShort(dateStr) {
       if (!dateStr) return '--/--';
       const parts = dateStr.split('-');
@@ -257,6 +293,10 @@
 
     // KPIカード更新
     function updateKPIs() {
+      document.getElementById('kpiGoalWeightDisplay').textContent = goalConfig.weight.toFixed(1);
+      document.getElementById('kpiGoalDateLabel').textContent = formatDateShort(goalConfig.date);
+      document.getElementById('headerGoalSub').textContent = `目標: ${goalConfig.weight}kg (${formatDateSlash(goalConfig.date)})・端末ローカル保存`;
+
       if (records.length === 0) {
         document.getElementById('kpiStartWeight').textContent = '--';
         document.getElementById('kpiLatestDate').textContent = '--/--';
@@ -271,7 +311,7 @@
       const latest = records[records.length - 1];
 
       const totalDiff = (latest.weight - first.weight).toFixed(1);
-      const remaining = (GOAL_WEIGHT - latest.weight).toFixed(1);
+      const remaining = (goalConfig.weight - latest.weight).toFixed(1);
 
       document.getElementById('kpiStartWeight').textContent = first.weight.toFixed(1);
       document.getElementById('kpiLatestDate').textContent = formatDateShort(latest.date);
@@ -281,7 +321,7 @@
       document.getElementById('kpiTotalDiff').textContent = `トータル ${diffSign}${totalDiff} kg`;
 
       const remEl = document.getElementById('kpiRemainingDiff');
-      if (latest.weight <= GOAL_WEIGHT) {
+      if (latest.weight <= goalConfig.weight) {
         remEl.textContent = '🎉 目標達成！';
         remEl.className = 'text-xs font-bold text-emerald-600 mt-1';
       } else {
@@ -319,7 +359,7 @@
       const goalProjectionData = latest
         ? [
             { x: latest.date, y: latest.weight, note: '現在地点' },
-            { x: GOAL_DATE, y: GOAL_WEIGHT, note: '12/30 年末目標' }
+            { x: goalConfig.date, y: goalConfig.weight, note: '目標到達' }
           ]
         : [];
 
@@ -354,7 +394,7 @@
               tension: 0.1
             },
             {
-              label: '12/30 目標ペース',
+              label: '目標ペース',
               data: goalProjectionData,
               borderColor: '#10b981',
               backgroundColor: '#10b981',
@@ -402,34 +442,16 @@
             },
             annotation: {
               annotations: {
-                appGoalLine: {
-                  type: 'line',
-                  yMin: APP_GOAL_WEIGHT,
-                  yMax: APP_GOAL_WEIGHT,
-                  borderColor: 'rgba(245, 158, 11, 0.65)',
-                  borderWidth: 1.5,
-                  borderDash: [5, 5],
-                  label: {
-                    display: true,
-                    content: 'アプリ設定目標: 65.0kg',
-                    position: 'start',
-                    backgroundColor: 'rgba(255, 251, 235, 0.9)',
-                    color: '#b45309',
-                    font: { family: "'Noto Sans JP', sans-serif", size: 11, weight: 'bold' },
-                    padding: { x: 6, y: 3 },
-                    borderRadius: 4
-                  }
-                },
                 finalGoalLine: {
                   type: 'line',
-                  yMin: GOAL_WEIGHT,
-                  yMax: GOAL_WEIGHT,
+                  yMin: goalConfig.weight,
+                  yMax: goalConfig.weight,
                   borderColor: 'rgba(16, 185, 129, 0.75)',
                   borderWidth: 1.5,
                   borderDash: [5, 5],
                   label: {
                     display: true,
-                    content: '12/30 最終目標: 63.0kg',
+                    content: `目標: ${goalConfig.weight}kg (${formatDateSlash(goalConfig.date)})`,
                     position: 'start',
                     backgroundColor: 'rgba(236, 253, 245, 0.9)',
                     color: '#047857',
@@ -477,15 +499,15 @@
       }
 
       const latest = records.length > 0 ? records[records.length - 1] : { weight: 68.0, date: '2026-11-11' };
-      const daysToGoal = Math.max(1, (new Date(GOAL_DATE) - new Date(latest.date)) / (1000 * 60 * 60 * 24));
+      const daysToGoal = Math.max(1, (new Date(goalConfig.date) - new Date(latest.date)) / (1000 * 60 * 60 * 24));
       const monthsToGoal = daysToGoal / 30.4375;
-      const goalPctLoss = ((latest.weight - GOAL_WEIGHT) / latest.weight) * 100;
+      const goalPctLoss = ((latest.weight - goalConfig.weight) / latest.weight) * 100;
       const targetMonthlyRate = Math.max(0, Number((goalPctLoss / monthsToGoal).toFixed(2)));
 
       rateChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['総合ペース', '年末目標ペース'],
+          labels: ['総合ペース', '目標ペース'],
           datasets: [
             {
               label: '月あたりの体重減少率 (%/月)',
@@ -629,6 +651,32 @@
       loadRecords();
       refreshAll();
 
+      // 目標設定モーダル制御
+      const goalModal = document.getElementById('goalModal');
+      document.getElementById('openGoalModalBtn').addEventListener('click', () => {
+        document.getElementById('modalGoalWeight').value = goalConfig.weight;
+        document.getElementById('modalGoalDate').value = goalConfig.date;
+        goalModal.classList.remove('hidden');
+        goalModal.classList.add('flex');
+      });
+      document.getElementById('closeGoalModalBtn').addEventListener('click', () => {
+        goalModal.classList.add('hidden');
+        goalModal.classList.remove('flex');
+      });
+      document.getElementById('goalForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const w = parseFloat(document.getElementById('modalGoalWeight').value);
+        const d = document.getElementById('modalGoalDate').value;
+        if (!isNaN(w) && d) {
+          goalConfig.weight = w;
+          goalConfig.date = d;
+          saveGoalConfig();
+          refreshAll();
+          goalModal.classList.add('hidden');
+          goalModal.classList.remove('flex');
+        }
+      });
+
       // タブ切り替え
       const tabWeightBtn = document.getElementById('tabWeightBtn');
       const tabRateBtn = document.getElementById('tabRateBtn');
@@ -699,10 +747,14 @@
 
       // JSONエクスポート
       document.getElementById('exportBtn').addEventListener('click', () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+        const exportObj = {
+          goal: goalConfig,
+          records: records
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `weight_data_${new Date().toISOString().slice(0,10)}.json`);
+        downloadAnchor.setAttribute("download", `weight_tracker_backup_${new Date().toISOString().slice(0,10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -717,13 +769,22 @@
           try {
             const imported = JSON.parse(event.target.result);
             if (Array.isArray(imported)) {
+              // 従来の古い形式（配列のみ）の互換対応
               records = imported;
-              saveRecords();
-              refreshAll();
-              alert('データを正常にインポートしました！');
+            } else if (imported && Array.isArray(imported.records)) {
+              // 新形式（目標設定＋記録）
+              records = imported.records;
+              if (imported.goal) {
+                goalConfig = imported.goal;
+                saveGoalConfig();
+              }
             } else {
               alert('無効なファイル形式です。');
+              return;
             }
+            saveRecords();
+            refreshAll();
+            alert('データを正常にインポートしました！');
           } catch (err) {
             alert('JSONの読み込みに失敗しました。');
           }
